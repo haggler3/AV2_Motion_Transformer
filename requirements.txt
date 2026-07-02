@@ -1,0 +1,9 @@
+polars
+pyarrow
+torch
+torch-geometric
+s3fs
+plotly
+matplotlib
+pandas
+av2
