@@ -1,10 +1,16 @@
 # Spline-Transformer Motion Predictor
 
-This repository contains a Transformer-based motion prediction model trained on the Argoverse 2 dataset. It predicts the future trajectory of vehicles based on their past trajectory.
+**TLDR:** This repository implements a Transformer-based motion prediction model that forecasts future vehicle trajectories from the Argoverse 2 dataset. Instead of predicting raw discrete waypoints, it predicts the control points of a Bezier Spline for smooth, kinematic-friendly trajectories.
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/haggler3/AV2_Motion_Transformer/blob/main/try_in_colab.ipynb)
+
+**Model Weights:** [haggler3/spline-transformer-av2 on Hugging Face](https://huggingface.co/haggler3/spline-transformer-av2)
+
+---
 
 ## Architecture
 
-The core of the network uses a standard PyTorch Transformer with Pre-Layer Normalization for stable training. Instead of predicting raw coordinates for each future timestep, the Transformer outputs the control points of a Bezier Spline. A differentiable Bezier Spline Decoder then uses these control points to render the final smooth trajectory.
+The network uses a standard PyTorch Transformer with Pre-Layer Normalization for stable training. Instead of predicting raw coordinates for each future timestep, the Transformer outputs the control points of a Bezier Spline. A differentiable Bezier Spline Decoder then uses these control points to render the final smooth trajectory.
 
 ```mermaid
 graph TD
@@ -18,22 +24,61 @@ graph TD
     H --> I[Predicted Future Trajectory 30 steps, x/y]
 ```
 
-## Setup and Usage
+## Setup & Usage
 
-Install the required dependencies using pip:
+### 1. Installation
+Clone the repository and install the dependencies:
 ```bash
+git clone git@github.com:haggler3/AV2_Motion_Transformer.git
+cd AV2_Motion_Transformer
 pip install -r requirements.txt
 ```
 
-You can run training locally using the scripts in `src/`. For a quick start and demonstration, check out the provided Jupyter Notebook.
+### 2. Download Data
+Use the provided script to download the Argoverse 2 dataset splits:
+```python
+from src.data import download_av2_split
+download_av2_split("val", 50, "./data")
+```
 
-## Try it in Colab
+### 3. Training
+Train the model by pointing it to the downloaded data directory:
+```python
+from src.train import train
+model = train("./data", epochs=5, scale_factor=50.0)
+```
 
-A quickstart notebook is included to test the code seamlessly in Google Colab.
-[Open try_in_colab.ipynb](try_in_colab.ipynb)
+### 4. Evaluation & Visualization
+Visualize the top predictions on a dark-mode styled plot:
+```python
+import torch
+from src.data import load_polars_dataframe, ArgoverseVehicleDataset
+from src.evaluate import visualize_good_predictions
 
-## Evaluation Plots
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+df = load_polars_dataframe("./data")
+dataset = ArgoverseVehicleDataset(df)
 
-The evaluation scripts use Plotly to visualize the ground truth vs the predicted trajectories.
+visualize_good_predictions(model, dataset, device, num_plots=5)
+```
 
-![Sample Predictions Placeholder](plots_placeholder.png)
+---
+
+## Training Performance
+
+Here is the training loss and validation metrics (ADE / FDE in meters) from the original notebook training run:
+
+![Training Loss and Validation Metrics](plot_1.png)
+
+---
+
+## Citations
+If you use this work, please cite the Argoverse 2 dataset:
+```bibtex
+@inproceedings{Argoverse2,
+  title={Argoverse 2: Next Generation Datasets for Autonomous Driving Perception and Forecasting},
+  author={Benjamin Wilson and William Qi and Tanmay Agarwal and John Lambert and Jagjeet Singh and Siddhesh Khandelwal and Bowen Pan and Ratnesh Kumar and Andrew Hartnett and Jhony Kaesemodel Pontes and Deva Ramanan and Peter Carr and James Hays},
+  booktitle={Proceedings of the Neural Information Processing Systems Track on Datasets and Benchmarks (NeurIPS Datasets and Benchmarks 2021)},
+  year={2021}
+}
+```
